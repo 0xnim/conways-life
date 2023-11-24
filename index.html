@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conway's Game of Life</title>
+  <style>
+    /* Add some basic styling */
+    #grid-container {
+      display: grid;
+      grid-template-columns: repeat(50, 10px);
+      gap: 1px;
+    }
+
+    .cell {
+      width: 10px;
+      height: 10px;
+      border: 1px solid #ccc;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="grid-container"></div>
+
+  <button onclick="requestNextIteration()">Next Iteration</button>
+  <button id="startstop" onclick="startStop()">Start/Stop</button>
+  <script>
+    let started = false;
+    // Your WebSocket client code here (as mentioned in the previous response)
+    const socket = new WebSocket("ws://localhost:3000"); // Replace with your server URL and port
+
+    // Connection opened
+    socket.addEventListener("open", (event) => {
+      console.log("WebSocket connection opened");
+    });
+
+    function requestNextIteration() {
+      const message = {type: "nextIteration"};
+      socket.send(JSON.stringify(message));
+    }
+
+    function startStop() {
+      started = !started;
+      updateButton();
+      const message = {type: "startStop"};
+      socket.send(JSON.stringify(message));
+    }
+
+    function updateButton() {
+      const button = document.querySelector("button:nth-of-type(2)");
+      button.textContent = started ? "Stop" : "Start";
+    }
+
+    // Listen for messages from the server
+    socket.addEventListener("message", (event) => {
+      const receivedGrid = JSON.parse(event.data);
+      console.log("Received grid from server:", receivedGrid);
+      // You can update your UI or perform other actions with the received grid data
+    });
+
+    // Connection closed
+    socket.addEventListener("close", (event) => {
+      console.log("WebSocket connection closed");
+    });
+
+    // Create the grid UI dynamically
+    const gridContainer = document.getElementById("grid-container");
+
+    function createGridUI(grid) {
+      gridContainer.innerHTML = "";
+      for (let i = 0; i < grid.length; i++) {
+        for (let j = 0; j < grid[i].length; j++) {
+          const cell = document.createElement("div");
+          cell.classList.add("cell");
+          cell.dataset.row = i;
+          cell.dataset.col = j;
+          cell.style.backgroundColor = grid[i][j] === 1 ? "#333" : "#fff";
+          cell.addEventListener("click", toggleCell);
+          gridContainer.appendChild(cell);
+        }
+      }
+    }
+
+    function toggleCell(event) {
+      const row = parseInt(event.target.dataset.row);
+      const col = parseInt(event.target.dataset.col);
+      // Toggle the cell state (alive or dead) in the local grid
+      grid[row][col] = 1 - grid[row][col];
+      // Update the UI to reflect the new state
+      createGridUI(grid);
+      // Send the updated grid to the server
+      socket.send(JSON.stringify(grid));
+    }
+
+    // Initialize the grid UI when the WebSocket connection is opened
+    socket.addEventListener("open", (event) => {
+      console.log("WebSocket connection opened");
+      createGridUI(grid);
+    });
+
+    // Listen for messages from the server and update the UI accordingly
+    socket.addEventListener("message", (event) => {
+      const receivedGrid = JSON.parse(event.data);
+      console.log("Received grid from server:", receivedGrid);
+      createGridUI(receivedGrid);
+    });
+
+    // Connection closed
+    socket.addEventListener("close", (event) => {
+      console.log("WebSocket connection closed");
+    });
+  </script>
+</body>
+
+</html>
